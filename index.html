@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SocialConnect - ADSA Project</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:sans-serif}
+body{background:#0f172a;color:white;padding:15px}
+h1{text-align:center;color:#38bdf8;font-size:22px}
+.subtitle{text-align:center;color:#94a3b8;margin:5px 0 15px;font-size:13px}
+.main{display:flex;gap:15px;flex-wrap:wrap}
+.controls{width:360px;display:flex;flex-direction:column;gap:12px}
+.card{background:#1e293b;padding:12px;border-radius:10px;border:1px solid #334155}
+.card h3{color:#38bdf8;margin-bottom:8px;font-size:15px}
+input,select{width:100%;padding:8px;margin:4px 0;border-radius:5px;border:none}
+button{width:100%;padding:8px;margin-top:6px;background:#38bdf8;border:none;border-radius:5px;font-weight:bold;cursor:pointer}
+button:hover{background:#0ea5e9}
+#graphBox{flex:1;min-height:500px;background:#1e293b;border-radius:10px;padding:15px;border:1px solid #334155}
+.user-node{display:inline-block;background:#38bdf8;color:#0f172a;padding:6px 12px;border-radius:20px;margin:5px;font-weight:bold}
+.edge{color:#5eead4;margin:3px 0}
+#suggestionResult,#pathResult{margin-top:8px;background:#0f172a;padding:8px;border-radius:5px;min-height:30px;color:#5eead4;font-size:14px}
+</style>
+</head>
+<body>
+<h1>SocialConnect - Friend Suggestion</h1>
+<p class="subtitle">ADSA: Graph (Adjacency List), BFS, Queue, HashMap</p>
+<div class="main">
+<div class="controls">
+  <div class="card">
+    <h3>1. Add User</h3>
+    <input id="userName" placeholder="Ex: Mahi">
+    <button onclick="addUser()">Add User</button>
+  </div>
+  <div class="card">
+    <h3>2. Add Friendship</h3>
+    <select id="user1"></select>
+    <select id="user2"></select>
+    <button onclick="addFriendship()">Connect</button>
+  </div>
+  <div class="card">
+    <h3>3. Friend Suggestions (Mutual Friends)</h3>
+    <select id="suggestFor"></select>
+    <button onclick="suggestFriends()">Get Suggestions</button>
+    <div id="suggestionResult">Add users first</div>
+  </div>
+  <div class="card">
+    <h3>4. Shortest Path (BFS)</h3>
+    <select id="fromUser"></select>
+    <select id="toUser"></select>
+    <button onclick="findPath()">Find Path</button>
+    <div id="pathResult"></div>
+  </div>
+</div>
+<div id="graphBox">
+  <h3 style="color:#38bdf8">Live Network:</h3>
+  <div id="nodesView"></div>
+  <hr style="margin:12px 0;border-color:#334155">
+  <div id="edgesView"></div>
+</div>
+</div>
+
+<script>
+let graph = {};
+function refresh(){
+  let users = Object.keys(graph);
+  ['user1','user2','suggestFor','fromUser','toUser'].forEach(id=>{
+    let s=document.getElementById(id);
+    s.innerHTML='';
+    users.forEach(u=>{
+      let o=document.createElement('option'); o.value=u; o.text=u; s.appendChild(o);
+    });
+  });
+  let nv=document.getElementById('nodesView');
+  nv.innerHTML = users.map(u=>`<span class="user-node">${u}</span>`).join('') || 'No users yet';
+  let ev=document.getElementById('edgesView');
+  let edges=[];
+  users.forEach(u=>{
+    graph[u].forEach(v=>{
+      if(u < v) edges.push(`${u} <--> ${v}`);
+    });
+  });
+  ev.innerHTML = '<b>Friendships:</b><br>' + (edges.map(e=>`<div class="edge">🔗 ${e}</div>`).join('') || 'No friendships yet');
+}
+function addUser(){
+  let name=document.getElementById('userName').value.trim();
+  if(!name) return alert('Enter name');
+  if(graph[name]) return alert('Already exists');
+  graph[name]=[];
+  document.getElementById('userName').value='';
+  refresh();
+  document.getElementById('suggestionResult').innerText=`Added ${name}! Now add more users.`;
+}
+function addFriendship(){
+  let a=document.getElementById('user1').value;
+  let b=document.getElementById('user2').value;
+  if(!a||!b||a===b) return alert('Select 2 different users');
+  if(graph[a].includes(b)) return alert('Already friends');
+  graph[a].push(b); graph[b].push(a);
+  refresh();
+}
+function suggestFriends(){
+  let user=document.getElementById('suggestFor').value;
+  if(!user) return;
+  let friends=new Set(graph[user]);
+  let count={};
+  friends.forEach(f=>{
+    graph[f].forEach(fof=>{
+      if(fof!==user &&!friends.has(fof)){
+        count[fof]=(count[fof]||0)+1;
+      }
+    });
+  });
+  let sorted=Object.entries(count).sort((a,b)=>b[1]-a[1]);
+  let div=document.getElementById('suggestionResult');
+  if(sorted.length===0) div.innerHTML='No suggestions. Add more connections!';
+  else div.innerHTML=sorted.map(([n,c])=>`👉 <b>${n}</b> - ${c} mutual friend(s)`).join('<br>');
+}
+function findPath(){
+  let s=document.getElementById('fromUser').value;
+  let e=document.getElementById('toUser').value;
+  if(!s||!e) return;
+  let q=[[s]]; let visited=new Set([s]);
+  while(q.length){
+    let path=q.shift(); let node=path[path.length-1];
+    if(node===e){
+      document.getElementById('pathResult').innerHTML=`Path: <b>${path.join(' → ')}</b><br>Degree: ${path.length-1}`;
+      return;
+    }
+    for(let nb of graph[node]){
+      if(!visited.has(nb)){ visited.add(nb); q.push([...path,nb]); }
+    }
+  }
+  document.getElementById('pathResult').innerText='No connection found!';
+}
+refresh();
+</script>
+</body>
+</html>
